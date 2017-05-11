@@ -285,6 +285,18 @@
   display: block;
   padding: 8px 10px;
 }
+.Select--multi .drag {
+  opacity: 0.6;
+}
+.Select--multi .move-cursor:hover {
+  cursor: move;
+}
+.Select--multi .spacer {
+  position: relative;
+  display: inline-block;
+  background-color: black;
+  height: 20px;
+}
 .Select--multi .Select-input {
   vertical-align: middle;
   margin-left: 10px;

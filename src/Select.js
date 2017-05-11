@@ -63,6 +63,7 @@ const Select = React.createClass({
 		deleteRemoves: React.PropTypes.bool,        // whether backspace removes an item if there is no text input
 		delimiter: React.PropTypes.string,          // delimiter to use to join multiple values for the hidden field value
 		disabled: React.PropTypes.bool,             // whether the Select is disabled or not
+		sortable: React.PropTypes.bool,             // whether the Select is disabled or not
 		escapeClearsValue: React.PropTypes.bool,    // whether escape clears the value when the menu is closed
 		filterOption: React.PropTypes.func,         // method to filter a single option (option, filterString)
 		filterOptions: React.PropTypes.any,         // boolean to enable default filtering or function to filter the options array ([options], filterString, [values])
@@ -133,6 +134,7 @@ const Select = React.createClass({
 			deleteRemoves: true,
 			delimiter: ',',
 			disabled: false,
+			sortable: false,
 			escapeClearsValue: true,
 			filterOptions: defaultFilterOptions,
 			ignoreAccents: true,
@@ -813,6 +815,7 @@ const Select = React.createClass({
 						onClick={onClick}
 						onRemove={this.removeValue}
 						value={value}
+						sortable={this.props.sortable}
 					>
 						{renderLabel(value, i)}
 						<span className="Select-aria-only">&nbsp;</span>

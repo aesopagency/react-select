@@ -41,6 +41,7 @@ var propTypes = {
 	loadingPlaceholder: _react2['default'].PropTypes.oneOfType([// replaces the placeholder while options are loading
 	_react2['default'].PropTypes.string, _react2['default'].PropTypes.node]),
 	loadOptions: _react2['default'].PropTypes.func.isRequired, // callback to load options asynchronously; (inputValue: string, callback: Function): ?Promise
+	multi: _react2['default'].PropTypes.bool, // multi-value input
 	options: _react.PropTypes.array.isRequired, // array of options
 	placeholder: _react2['default'].PropTypes.oneOfType([// field placeholder, displayed when there's no value (shared with Select)
 	_react2['default'].PropTypes.string, _react2['default'].PropTypes.node]),
@@ -296,6 +297,10 @@ function reduce(obj) {
 var AsyncCreatable = _react2['default'].createClass({
 	displayName: 'AsyncCreatableSelect',
 
+	focus: function focus() {
+		this.select.focus();
+	},
+
 	render: function render() {
 		var _this = this;
 
@@ -313,6 +318,7 @@ var AsyncCreatable = _react2['default'].createClass({
 								return asyncProps.onInputChange(input);
 							},
 							ref: function (ref) {
+								_this.select = ref;
 								creatableProps.ref(ref);
 								asyncProps.ref(ref);
 							}
@@ -552,6 +558,10 @@ var Creatable = _react2['default'].createClass({
 		} else {
 			this.select.selectValue(option);
 		}
+	},
+
+	focus: function focus() {
+		this.select.focus();
 	},
 
 	render: function render() {
@@ -859,6 +869,7 @@ var Select = _react2['default'].createClass({
 
 	propTypes: {
 		addLabelText: _react2['default'].PropTypes.string, // placeholder displayed when you want to add a label on a multi-value input
+		'aria-describedby': _react2['default'].PropTypes.string, // HTML ID(s) of element(s) that should be used to describe this input (for assistive tech)
 		'aria-label': _react2['default'].PropTypes.string, // Aria label (for assistive tech)
 		'aria-labelledby': _react2['default'].PropTypes.string, // HTML ID of an element that should be used as the label (for assistive tech)
 		arrowRenderer: _react2['default'].PropTypes.func, // Create drop-down caret element
@@ -875,6 +886,7 @@ var Select = _react2['default'].createClass({
 		deleteRemoves: _react2['default'].PropTypes.bool, // whether backspace removes an item if there is no text input
 		delimiter: _react2['default'].PropTypes.string, // delimiter to use to join multiple values for the hidden field value
 		disabled: _react2['default'].PropTypes.bool, // whether the Select is disabled or not
+		sortable: _react2['default'].PropTypes.bool, // whether the Select is disabled or not
 		escapeClearsValue: _react2['default'].PropTypes.bool, // whether escape clears the value when the menu is closed
 		filterOption: _react2['default'].PropTypes.func, // method to filter a single option (option, filterString)
 		filterOptions: _react2['default'].PropTypes.any, // boolean to enable default filtering or function to filter the options array ([options], filterString, [values])
@@ -945,6 +957,7 @@ var Select = _react2['default'].createClass({
 			deleteRemoves: true,
 			delimiter: ',',
 			disabled: false,
+			sortable: false,
 			escapeClearsValue: true,
 			filterOptions: _utilsDefaultFilterOptions2['default'],
 			ignoreAccents: true,
@@ -1173,7 +1186,7 @@ var Select = _react2['default'].createClass({
 			});
 		} else {
 			// otherwise, focus the input and open the menu
-			this._openAfterFocus = true;
+			this._openAfterFocus = this.props.openOnFocus;
 			this.focus();
 		}
 	},
@@ -1664,7 +1677,8 @@ var Select = _react2['default'].createClass({
 						key: 'value-' + i + '-' + value[_this4.props.valueKey],
 						onClick: onClick,
 						onRemove: _this4.removeValue,
-						value: value
+						value: value,
+						sortable: _this4.props.sortable
 					},
 					renderLabel(value, i),
 					_react2['default'].createElement(
@@ -1706,6 +1720,7 @@ var Select = _react2['default'].createClass({
 			'aria-owns': ariaOwns,
 			'aria-haspopup': '' + isOpen,
 			'aria-activedescendant': isOpen ? this._instancePrefix + '-option-' + focusedOptionIndex : this._instancePrefix + '-value',
+			'aria-describedby': this.props['aria-describedby'],
 			'aria-labelledby': this.props['aria-labelledby'],
 			'aria-label': this.props['aria-label'],
 			className: className,
@@ -1877,7 +1892,14 @@ var Select = _react2['default'].createClass({
 
 		var focusedOption = this.state.focusedOption || selectedOption;
 		if (focusedOption && !focusedOption.disabled) {
-			var focusedOptionIndex = options.indexOf(focusedOption);
+			var focusedOptionIndex = -1;
+			options.some(function (option, index) {
+				var isOptionEqual = option.value === focusedOption.value;
+				if (isOptionEqual) {
+					focusedOptionIndex = index;
+				}
+				return isOptionEqual;
+			});
 			if (focusedOptionIndex !== -1) {
 				return focusedOptionIndex;
 			}
@@ -2007,12 +2029,18 @@ var _classnames = (typeof window !== "undefined" ? window['classNames'] : typeof
 
 var _classnames2 = _interopRequireDefault(_classnames);
 
+var dragElement = null;
+var hoveredElement = null;
+var spacer = document.createElement('div');
+spacer.className = 'spacer';
+
 var Value = _react2['default'].createClass({
 
 	displayName: 'Value',
 
 	propTypes: {
 		children: _react2['default'].PropTypes.node,
+		sortable: _react2['default'].PropTypes.bool,
 		disabled: _react2['default'].PropTypes.bool, // disabled prop passed to ReactSelect
 		id: _react2['default'].PropTypes.string, // Unique id for the value - used for aria
 		onClick: _react2['default'].PropTypes.func, // method to handle click on value label
@@ -2020,9 +2048,43 @@ var Value = _react2['default'].createClass({
 		value: _react2['default'].PropTypes.object.isRequired },
 
 	// the option object for this value
+	getInitialState: function getInitialState() {
+		return {
+			dragElement: null,
+			hoveredElement: null
+		};
+	},
+
+	handleMouseUp: function handleMouseUp(event) {
+		if (dragElement !== null) {
+			if (hoveredElement) {
+				var currElement = this.getValueElement(hoveredElement);
+				var elements = document.getElementsByClassName('Select-value');
+				if (currElement === elements[0]) {
+					currElement.parentNode.insertBefore(dragElement, currElement);
+				} else {
+					this.insertAfter(dragElement, currElement);
+				}
+			}
+			spacer.remove();
+			dragElement.classList.remove('drag');
+			document.onmousemove = null;
+			document.onselectstart = null;
+			dragElement = null;
+		}
+	},
+
 	handleMouseDown: function handleMouseDown(event) {
 		if (event.type === 'mousedown' && event.button !== 0) {
 			return;
+		}
+		if (this.props.sortable) {
+			var parent = event.target.parentElement != null ? event.target.parentElement : event.srcElement;
+			parent.className += ' drag';
+			dragElement = parent;
+			spacer.style.width = dragElement.offsetWidth + 'px';
+			document.onmouseup = this.handleMouseUp;
+			event.preventDefault();
 		}
 		if (this.props.onClick) {
 			event.stopPropagation();
@@ -2031,6 +2093,21 @@ var Value = _react2['default'].createClass({
 		}
 		if (this.props.value.href) {
 			event.stopPropagation();
+		}
+	},
+
+	elIndex: function elIndex(el) {
+		return Array.prototype.indexOf.call(el.parentElement.childNodes, el);
+	},
+
+	handleMouseEnter: function handleMouseEnter(event) {
+		if (dragElement !== null) {
+			hoveredElement = this.getValueElement(event.target);
+			if (this.elIndex(dragElement) < this.elIndex(hoveredElement)) {
+				dragElement.parentNode.insertBefore(hoveredElement, dragElement);
+			} else {
+				hoveredElement.parentNode.insertBefore(dragElement, hoveredElement);
+			}
 		}
 	},
 
@@ -2059,6 +2136,18 @@ var Value = _react2['default'].createClass({
 		this.dragging = false;
 	},
 
+	getValueElement: function getValueElement(element) {
+		if (element.className.indexOf('label') > 0 || element.className.indexOf('icon') > 0) {
+			return element.parentNode;
+		} else {
+			return element;
+		}
+	},
+
+	insertAfter: function insertAfter(newNode, referenceNode) {
+		referenceNode.parentNode.insertBefore(newNode, referenceNode);
+	},
+
 	renderRemoveIcon: function renderRemoveIcon() {
 		if (this.props.disabled || !this.props.onRemove) return;
 		return _react2['default'].createElement(
@@ -2075,13 +2164,14 @@ var Value = _react2['default'].createClass({
 
 	renderLabel: function renderLabel() {
 		var className = 'Select-value-label';
+		className += this.props.sortable ? ' move-cursor' : '';
 		return this.props.onClick || this.props.value.href ? _react2['default'].createElement(
 			'a',
 			{ className: className, href: this.props.value.href, target: this.props.value.target, onMouseDown: this.handleMouseDown, onTouchEnd: this.handleMouseDown },
 			this.props.children
 		) : _react2['default'].createElement(
 			'span',
-			{ className: className, role: 'option', 'aria-selected': 'true', id: this.props.id },
+			{ className: className, role: 'option', 'aria-selected': 'true', id: this.props.id, onMouseDown: this.handleMouseDown, onTouchEnd: this.handleMouseDown },
 			this.props.children
 		);
 	},
@@ -2091,7 +2181,8 @@ var Value = _react2['default'].createClass({
 			'div',
 			{ className: (0, _classnames2['default'])('Select-value', this.props.value.className),
 				style: this.props.value.style,
-				title: this.props.value.title
+				title: this.props.value.title,
+				onMouseEnter: this.handleMouseEnter
 			},
 			this.renderRemoveIcon(),
 			this.renderLabel()

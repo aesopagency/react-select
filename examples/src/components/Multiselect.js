@@ -22,6 +22,7 @@ var MultiSelectField = React.createClass({
 	getInitialState () {
 		return {
 			disabled: false,
+			sortable: false,
 			crazy: false,
 			options: FLAVOURS,
 			value: [],
@@ -34,6 +35,9 @@ var MultiSelectField = React.createClass({
 	toggleDisabled (e) {
 		this.setState({ disabled: e.target.checked });
 	},
+	toggleSortable (e) {
+		this.setState({ sortable: e.target.checked });
+	},
 	toggleChocolate (e) {
 		let crazy = e.target.checked;
 		this.setState({
@@ -45,12 +49,16 @@ var MultiSelectField = React.createClass({
 		return (
 			<div className="section">
 				<h3 className="section-heading">{this.props.label}</h3>
-				<Select multi simpleValue disabled={this.state.disabled} value={this.state.value} placeholder="Select your favourite(s)" options={this.state.options} onChange={this.handleSelectChange} />
+				<Select multi simpleValue disabled={this.state.disabled} sortable={this.state.sortable} value={this.state.value} placeholder="Select your favourite(s)" options={this.state.options} onChange={this.handleSelectChange} />
 
 				<div className="checkbox-list">
 					<label className="checkbox">
 						<input type="checkbox" className="checkbox-control" checked={this.state.disabled} onChange={this.toggleDisabled} />
 						<span className="checkbox-label">Disable the control</span>
+					</label>
+					<label className="checkbox">
+						<input type="checkbox" className="checkbox-control" checked={this.state.sortable} onChange={this.toggleSortable} />
+						<span className="checkbox-label">Sortable</span>
 					</label>
 					<label className="checkbox">
 						<input type="checkbox" className="checkbox-control" checked={this.state.crazy} onChange={this.toggleChocolate} />
