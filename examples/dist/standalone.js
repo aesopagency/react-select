@@ -2057,15 +2057,15 @@ var Value = _react2['default'].createClass({
 
 	handleMouseUp: function handleMouseUp(event) {
 		if (dragElement !== null) {
-			if (hoveredElement) {
-				var currElement = this.getValueElement(hoveredElement);
-				var elements = document.getElementsByClassName('Select-value');
-				if (currElement === elements[0]) {
-					currElement.parentNode.insertBefore(dragElement, currElement);
-				} else {
-					this.insertAfter(dragElement, currElement);
-				}
-			}
+			// if(hoveredElement) {
+			// 	let currElement = this.getValueElement(hoveredElement);
+			// 	let elements = document.getElementsByClassName('Select-value');
+			// 	if (currElement === elements[0]) {
+			// 		currElement.parentNode.insertBefore(dragElement, currElement);
+			// 	} else {
+			// 		this.insertAfter(dragElement, currElement)
+			// 	}
+			// }
 			spacer.remove();
 			dragElement.classList.remove('drag');
 			document.onmousemove = null;
